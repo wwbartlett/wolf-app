@@ -270,6 +270,7 @@ body::before{
 <script>
 const COURSE={
   par:72,
+  scorecardScanned:false,
   holeHdcp:[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],
   tees:[
     {name:"Blue",        color:"#1a6fbb", slope:130, rating:72.0, par:72},
@@ -372,6 +373,7 @@ function applyManualTees(){
   // For manual entry use a balanced distribution interleaving front/back nine
   // Odd ranks on front 9, even ranks on back 9 — spreads strokes evenly across round
   COURSE.holeHdcp = [1,3,5,7,9,11,13,15,17,2,4,6,8,10,12,14,16,18];
+  COURSE.scorecardScanned = false;
   S.teeIdx = 0;
   initTees();
   renderStrokeSummary();
@@ -460,6 +462,7 @@ Include ALL tee sets found across both images. For holeHdcp use the MEN'S handic
     let applied = [];
 
     if(parsed.tees && parsed.tees.length > 0){
+      COURSE.scorecardScanned = true;
       COURSE.tees = parsed.tees.map(t=>({
         name: t.name||'Unknown', color: t.color||'#888888',
         slope: t.slope||113, rating: t.rating||72, par: t.par||parsed.par||72
@@ -698,7 +701,7 @@ function renderHole(){
   $('hole-display').textContent='Hole '+h;
   $('super-banner').style.display=isSuper?'block':'none';
   $('wolf-lbl').textContent=S.players[wi].name;
-  $('score-hdr').textContent='Net scores'+(rank?' — Hdcp #'+rank+' (stroke ref)':'');
+  $('score-hdr').textContent='Net scores'+(COURSE.scorecardScanned&&rank?' — Hdcp #'+rank:'');
 
   const bet=isSuper?(S.swBets[h]||null):S.baseBet;
   $('hole-sub').textContent=bet
@@ -725,7 +728,7 @@ function renderHole(){
     const s=strokes(p.courseHdcp,rank);
     const b=document.createElement('button');
     b.className='wolf-btn';b.dataset.idx=i;
-    b.innerHTML=p.name+(s>0?' <span class="badge bstroke">+'+s+'</span>':'');
+    b.innerHTML=p.name+(COURSE.scorecardScanned&&s>0?' <span class="badge bstroke">+'+s+'</span>':'');
     b.onclick=()=>selPartner(i);
     pb.appendChild(b);
   });
@@ -815,8 +818,7 @@ function renderScoreRows(wi,rank){
     const s=strokes(p.courseHdcp,rank);
     const saved=HS.scores[i]||'par';
     const d=document.createElement('div');d.className='player-row';
-    const sLbl=s>0?'<span class="badge bstroke" style="margin-left:4px">+'+s+'</span>'
-      :(s<0?'<span class="badge" style="background:#faeeda;color:#854f0b;margin-left:4px">'+s+'</span>':'');
+    const sLbl=COURSE.scorecardScanned&&s>0?'<span class="badge bstroke" style="margin-left:4px">+'+s+'</span>':'';
     const chLbl=p.courseHdcp!==null?'<span style="font-size:11px;color:#888;margin-left:4px">CH '+p.courseHdcp+'</span>':'';
     d.innerHTML='<span style="flex:1;font-size:14px;font-weight:600">'+p.name
       +(i===wi?' <span class="badge bw">🐺 Wolf</span>':((HS.partners||[]).includes(i)&&!HS.lone?' <span class="badge bp">🤝 Partner</span>':''))
