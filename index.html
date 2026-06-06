@@ -75,11 +75,21 @@ input[type=text],input[type=number]{width:100%;padding:9px 12px;border:1px solid
 
     <!-- Scan tab -->
     <div id="course-tab-scan">
-      <p style="font-size:12px;color:#888;margin-bottom:10px">Take a photo of your scorecard — tees, slope, rating, and hole handicaps load automatically.</p>
-      <label id="upload-label" style="display:flex;align-items:center;justify-content:center;gap:8px;border:2px dashed #ccc;border-radius:10px;padding:18px;cursor:pointer;font-size:14px;color:#555;touch-action:manipulation">
-        <span style="font-size:22px">📸</span> Tap to take or upload photo
-        <input type="file" id="scorecard-upload" accept="image/*" capture="environment" style="display:none" onchange="handleScorecardUpload(event)">
+      <p style="font-size:12px;color:#888;margin-bottom:10px">Scan the front of the scorecard. If ratings or hole handicaps are on the back, scan that too.</p>
+
+      <div style="font-size:11px;color:#888;font-weight:700;margin-bottom:6px">FRONT OF SCORECARD</div>
+      <label id="upload-label-1" style="display:flex;align-items:center;justify-content:center;gap:8px;border:2px dashed #ccc;border-radius:10px;padding:14px;cursor:pointer;font-size:14px;color:#555;touch-action:manipulation;margin-bottom:8px">
+        <span style="font-size:20px">📸</span> Tap to upload front
+        <input type="file" id="scorecard-upload-1" accept="image/*" capture="environment" style="display:none" onchange="handleScorecardUpload(event, 1)">
       </label>
+
+      <div style="font-size:11px;color:#888;font-weight:700;margin-bottom:6px">BACK OF SCORECARD <span style="font-weight:400;color:#aaa">(optional)</span></div>
+      <label id="upload-label-2" style="display:flex;align-items:center;justify-content:center;gap:8px;border:2px dashed #ccc;border-radius:10px;padding:14px;cursor:pointer;font-size:14px;color:#555;touch-action:manipulation;margin-bottom:8px">
+        <span style="font-size:20px">📸</span> Tap to upload back
+        <input type="file" id="scorecard-upload-2" accept="image/*" capture="environment" style="display:none" onchange="handleScorecardUpload(event, 2)">
+      </label>
+
+      <button class="btn btn-primary" id="btn-process-scan" style="width:100%;display:none" onclick="processScorecardScans()">Read scorecard</button>
       <div id="upload-status" style="margin-top:8px;font-size:13px;display:none"></div>
     </div>
 
@@ -313,49 +323,60 @@ function applyManualTees(){
   status.innerHTML = '<span style="color:#2d7a00">✅ Slope '+slope+' · Rating '+rating+' applied</span>';
 }
 
-async function handleScorecardUpload(event){
+// Store scanned images
+const scannedImages = {1: null, 2: null};
+
+async function fileToJpegBase64(file){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxW = 1600;
+      const scale = img.width > maxW ? maxW / img.width : 1;
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(objectUrl);
+      res(canvas.toDataURL('image/jpeg', 0.85).split(',')[1]);
+    };
+    img.onerror = () => rej(new Error('Could not load image'));
+    img.src = objectUrl;
+  });
+}
+
+async function handleScorecardUpload(event, side){
   const file = event.target.files[0];
   if(!file) return;
+  const label = document.getElementById('upload-label-'+side);
+  label.style.borderColor = '#0066cc';
+  label.innerHTML = '<span style="font-size:20px">⏳</span> Loading...';
+  try {
+    scannedImages[side] = await fileToJpegBase64(file);
+    label.style.borderColor = '#2d7a00';
+    label.style.background = '#f0fce8';
+    label.innerHTML = '<span style="font-size:20px">✅</span> Photo '+(side===1?'front':'back')+' ready';
+    // Show process button once at least front is uploaded
+    if(scannedImages[1]){
+      document.getElementById('btn-process-scan').style.display = 'block';
+    }
+  } catch(err){
+    label.style.borderColor = '#cc2222';
+    label.innerHTML = '<span style="font-size:20px">❌</span> Failed — try again';
+  }
+}
+
+async function processScorecardScans(){
   const status = document.getElementById('upload-status');
-  const label  = document.getElementById('upload-label');
   status.style.display = 'block';
   status.innerHTML = '<span style="color:#0066cc">⏳ Reading scorecard...</span>';
-  label.style.borderColor = '#0066cc';
 
   try {
-    // Convert image to JPEG via canvas (handles HEIC and other formats)
-    const base64 = await new Promise((res, rej) => {
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(file);
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        // Scale down if too large (max 1600px wide)
-        const maxW = 1600;
-        const scale = img.width > maxW ? maxW / img.width : 1;
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        URL.revokeObjectURL(objectUrl);
-        res(dataUrl.split(',')[1]);
-      };
-      img.onerror = () => rej(new Error('Could not load image'));
-      img.src = objectUrl;
-    });
-    const mediaType = 'image/jpeg';
-
-    const response = await fetch('/api/claude', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-            { type: 'text', text: `Extract golf course data from this scorecard image. Respond ONLY with a valid JSON object, no explanation, no markdown.
+    // Build content array with all available images
+    const content = [];
+    if(scannedImages[1]) content.push({type:'image', source:{type:'base64', media_type:'image/jpeg', data:scannedImages[1]}});
+    if(scannedImages[2]) content.push({type:'image', source:{type:'base64', media_type:'image/jpeg', data:scannedImages[2]}});
+    content.push({type:'text', text:`Extract golf course data from these scorecard image(s). One may be the front, one the back. Combine all data found. Respond ONLY with a valid JSON object, no explanation, no markdown.
 
 {
   "courseName": "string or null",
@@ -366,18 +387,19 @@ async function handleScorecardUpload(event){
   "holeHdcp": [18 integers, hole handicap rank holes 1-18, 1=hardest, or null if not visible]
 }
 
-Include ALL tee sets. Return ONLY the JSON.` }
-          ]
-        }]
-      })
+Include ALL tee sets found across both images. Return ONLY the JSON.`});
+
+    const response = await fetch('/api/claude', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({model:'claude-sonnet-4-6', max_tokens:1000, messages:[{role:'user', content}]})
     });
 
     const data = await response.json();
     if(data.error) throw new Error(data.error.message || JSON.stringify(data.error));
 
     const raw = data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
-    const clean = raw.replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(clean);
+    const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
     let applied = [];
 
     if(parsed.tees && parsed.tees.length > 0){
@@ -389,7 +411,7 @@ Include ALL tee sets. Return ONLY the JSON.` }
       S.teeIdx = 0;
       initTees();
       renderStrokeSummary();
-      applied.push(parsed.tees.length + ' tee sets');
+      applied.push(parsed.tees.length + ' tee set'+(parsed.tees.length>1?'s':''));
     }
     if(parsed.holeHdcp && parsed.holeHdcp.length === 18){
       COURSE.holeHdcp = parsed.holeHdcp;
@@ -398,18 +420,15 @@ Include ALL tee sets. Return ONLY the JSON.` }
     if(parsed.courseName) applied.push(parsed.courseName);
 
     if(applied.length === 0){
-      status.innerHTML = '<span style="color:#cc7700">⚠️ Could not read scorecard. Try a clearer photo in good lighting.</span>';
+      status.innerHTML = '<span style="color:#cc7700">⚠️ Could not read scorecard data. Try clearer photos.</span>';
     } else {
       status.innerHTML = '<span style="color:#2d7a00">✅ Loaded: ' + applied.join(', ') + '</span>';
-      label.style.borderColor = '#2d7a00';
-      label.style.background = '#f0fce8';
       const tc = document.getElementById('tee-card');
       if(tc) tc.style.display = 'block';
     }
-  } catch(err) {
+  } catch(err){
     console.error(err);
     status.innerHTML = '<span style="color:#cc2222">❌ ' + err.message + '</span>';
-    label.style.borderColor = '#cc2222';
   }
 }
 function renderStrokeSummary(){
