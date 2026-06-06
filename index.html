@@ -59,6 +59,12 @@ input[type=text],input[type=number]{width:100%;padding:9px 12px;border:1px solid
 .pot-box{background:#f0f5e8;border:1px solid #b5d48a;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#2d5a00}
 .pot-row{display:flex;justify-content:space-between;padding:2px 0}
 .pot-total{font-weight:700;font-size:14px;border-top:1px solid #b5d48a;margin-top:4px;padding-top:4px}
+.order-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border:1px solid #e5e5e0;border-radius:8px;margin-bottom:6px;touch-action:none;user-select:none}
+.order-item.dragging{opacity:0.5;border:2px dashed #0066cc}
+.order-num{font-size:13px;color:#888;min-width:20px;text-align:center}
+.order-name{flex:1;font-size:15px;font-weight:600}
+.order-arrows{display:flex;flex-direction:column;gap:2px}
+.order-arrow{background:transparent;border:1px solid #ccc;border-radius:6px;width:28px;height:24px;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center}
 </style>
 </head>
 <body>
@@ -137,6 +143,12 @@ input[type=text],input[type=number]{width:100%;padding:9px 12px;border:1px solid
     <p style="font-size:12px;color:#666;margin-bottom:10px">Enter the smaller of the two bet amounts. The app calculates the balanced pot automatically.</p>
     <div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">$</span><input type="number" id="base-bet" value="2" min="1" step="1" style="width:90px" oninput="updateBetPreview()"></div>
     <div id="bet-preview" style="margin-top:10px;font-size:13px;color:#555"></div>
+  </div>
+
+  <div class="card" id="order-card" style="display:none">
+    <div class="stitle">🎯 Wolf order</div>
+    <p style="font-size:12px;color:#888;margin-bottom:10px">Drag to reorder or use arrows. This sets who is Wolf on each hole.</p>
+    <div id="order-list"></div>
   </div>
 
   <div class="card" id="stroke-summary" style="display:none">
@@ -498,6 +510,75 @@ function renderStrokeSummary(){
   card.style.display = 'block';
 }
 
+// ── Wolf order ───────────────────────────────────────────────────────────
+let wolfOrderCustom = []; // indexes into players array
+
+function renderOrderList(){
+  const card = document.getElementById('order-card');
+  const list = document.getElementById('order-list');
+  if(!card||!list) return;
+
+  // Build player list from inputs
+  const rows = document.querySelectorAll('.pr');
+  const names = [];
+  rows.forEach(row => {
+    const name = row.querySelectorAll('input')[0].value.trim();
+    if(name) names.push(name);
+  });
+
+  if(names.length < 2){ card.style.display='none'; return; }
+
+  // Initialize or sync wolfOrderCustom
+  if(wolfOrderCustom.length !== names.length){
+    wolfOrderCustom = names.map((_,i) => i);
+  }
+
+  card.style.display = 'block';
+  list.innerHTML = '';
+
+  wolfOrderCustom.forEach((playerIdx, orderPos) => {
+    const name = names[playerIdx] || 'Player '+(playerIdx+1);
+    const div = document.createElement('div');
+    div.className = 'order-item';
+    div.dataset.pos = orderPos;
+    div.draggable = true;
+    div.innerHTML = '<span class="order-num">'+(orderPos+1)+'</span>'
+      + '<span class="order-name">'+name+'</span>'
+      + '<div class="order-arrows">'
+      + '<button class="order-arrow" onclick="moveOrderItem('+orderPos+',-1)">▲</button>'
+      + '<button class="order-arrow" onclick="moveOrderItem('+orderPos+',1)">▼</button>'
+      + '</div>';
+
+    // Drag events
+    div.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', orderPos);
+      setTimeout(() => div.classList.add('dragging'), 0);
+    });
+    div.addEventListener('dragend', () => div.classList.remove('dragging'));
+    div.addEventListener('dragover', e => e.preventDefault());
+    div.addEventListener('drop', e => {
+      e.preventDefault();
+      const from = parseInt(e.dataTransfer.getData('text/plain'));
+      const to = parseInt(div.dataset.pos);
+      if(from !== to){
+        const item = wolfOrderCustom.splice(from, 1)[0];
+        wolfOrderCustom.splice(to, 0, item);
+        renderOrderList();
+      }
+    });
+
+    list.appendChild(div);
+  });
+}
+
+function moveOrderItem(pos, dir){
+  const newPos = pos + dir;
+  if(newPos < 0 || newPos >= wolfOrderCustom.length) return;
+  const item = wolfOrderCustom.splice(pos, 1)[0];
+  wolfOrderCustom.splice(newPos, 0, item);
+  renderOrderList();
+}
+
 function initTees(){
   const c=$('tee-opts');c.innerHTML='';
   COURSE.tees.forEach((t,i)=>{
@@ -525,7 +606,7 @@ function addRow(){
   const d=document.createElement('div');
   d.className='pr';
   d.style.cssText='display:grid;grid-template-columns:1fr 95px 36px;gap:6px;align-items:center;margin-bottom:8px';
-  d.innerHTML='<input type="text" placeholder="Player name" oninput="renderStrokeSummary()">'
+  d.innerHTML='<input type="text" placeholder="Player name" oninput="renderStrokeSummary();renderOrderList()">'
     +'<input type="number" placeholder="10.4" step="0.1" min="-10" max="54" oninput="renderStrokeSummary()">'
     +'<button class="btn btn-sm" onclick="removeRow(this)" style="padding:6px 8px">✕</button>';
   pi.appendChild(d);
@@ -535,7 +616,9 @@ function addRow(){
 function removeRow(btn){
   if(document.querySelectorAll('.pr').length<=2) return;
   btn.closest('.pr').remove();
+  wolfOrderCustom = []; // reset order when players change
   updateBetPreview();
+  renderOrderList();
 }
 
 function startRound(){
@@ -560,7 +643,11 @@ function startRound(){
   S.players=players;
   S.baseBet=parseFloat($('base-bet').value)||2;
   S.hole=1;S.holes=[];S.swBets={};
-  S.wolfOrder=Array.from({length:18},(_,i)=>i%players.length);
+  // Build wolf order using custom order if set, otherwise default
+  const baseOrder = wolfOrderCustom.length === players.length
+    ? wolfOrderCustom.slice()
+    : players.map((_,i) => i);
+  S.wolfOrder = Array.from({length:18}, (_,i) => baseOrder[i % baseOrder.length]);
   showScr('hole');renderHole();
 }
 
