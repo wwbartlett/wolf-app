@@ -1,29 +1,865 @@
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
-  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Wolf</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wolf">
+<meta name="theme-color" content="#1a3a1a">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%231a3a1a'/%3E%3Ctext x='256' y='340' font-size='320' text-anchor='middle' font-family='Apple Color Emoji,Segoe UI Emoji,sans-serif'%3E%F0%9F%90%BA%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%231a3a1a'/%3E%3Ctext x='256' y='340' font-size='320' text-anchor='middle' font-family='Apple Color Emoji,Segoe UI Emoji,sans-serif'%3E%F0%9F%90%BA%3C/text%3E%3C/svg%3E">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a1a;font-size:16px}
+.screen{display:none}.screen.active{display:block}
+.wrap{max-width:480px;margin:0 auto;padding:16px}
+.card{background:#fff;border:1px solid #e5e5e0;border-radius:12px;padding:16px;margin-bottom:12px}
+.btn{background:#fff;border:1px solid #ccc;border-radius:8px;padding:9px 16px;font-size:14px;cursor:pointer;color:#1a1a1a;font-family:inherit;touch-action:manipulation}
+.btn:active{background:#f0f0ec}
+.btn-primary{background:#0066cc;border-color:#0066cc;color:#fff}
+.btn-primary:active{background:#0055aa}
+.btn-danger{background:#cc2222;border-color:#cc2222;color:#fff}
+.btn-sm{padding:6px 12px;font-size:13px}
+.badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:6px;font-weight:600}
+.bw{background:#eeecfe;color:#3c3489}
+.bl{background:#faece7;color:#993c1d}
+.bb{background:#faeeda;color:#854f0b}
+.bs{background:#fcebeb;color:#a32d2d}
+.bstroke{background:#e6f1fb;color:#185fa5;font-size:10px;padding:1px 5px;border-radius:4px}
+.bp{background:#e8f5e9;color:#2e7d32}
+input[type=text],input[type=number]{width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:8px;font-size:15px;font-family:inherit;background:#fff;-webkit-appearance:none}
+.score-btn{width:38px;height:38px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-weight:600;touch-action:manipulation}
+.score-btn:active{transform:scale(0.95)}
+.ae{background:#e1f5ee;border-color:#1d9e75;color:#085041}
+.ab{background:#eaf3de;border-color:#639922;color:#27500a}
+.ap{background:#f0f0ec;border-color:#999}
+.abg{background:#faeeda;border-color:#ba7517;color:#633806}
+.ad{background:#faece7;border-color:#d85a30;color:#993c1d}
+.wolf-btn{padding:7px 14px;font-size:13px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;font-family:inherit;touch-action:manipulation;margin-bottom:4px}
+.wolf-btn.sel{background:#eeecfe;border-color:#534ab7;color:#3c3489;font-weight:600}
+.wolf-btn.lone-sel{background:#faece7;border-color:#993c1d;color:#993c1d;font-weight:600}
+.wolf-btn.blind-sel{background:#faeeda;border-color:#854f0b;color:#854f0b;font-weight:600}
+.pos{color:#2d7a00;font-weight:600}.neg{color:#a32d2d;font-weight:600}
+.stitle{font-size:12px;color:#888;margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.hole-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.tabs{display:flex;gap:4px;margin-bottom:12px}
+.tab{flex:1;text-align:center;padding:8px;font-size:14px;border:1px solid #ccc;border-radius:8px;cursor:pointer;color:#666;background:#fff;font-family:inherit;touch-action:manipulation}
+.tab.active{background:#0066cc;border-color:#0066cc;color:#fff;font-weight:600}
+.tee-opt{border:1px solid #ccc;border-radius:10px;padding:12px 14px;cursor:pointer;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;touch-action:manipulation}
+.tee-opt.sel{border:2px solid #0066cc;background:#f0f5ff}
+.tee-dot{width:14px;height:14px;border-radius:50%;display:inline-block;margin-right:8px;vertical-align:middle;flex-shrink:0}
+.player-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #f0f0ec}
+.player-row:last-child{border-bottom:none}
+.metric{background:#f5f5f0;border-radius:8px;padding:12px;text-align:center}
+.metric-val{font-size:26px;font-weight:700}
+.metric-lbl{font-size:12px;color:#666;margin-top:2px}
+.super-banner{background:#fcebeb;border:1px solid #f09595;border-radius:10px;padding:10px 14px;font-size:14px;color:#a32d2d;margin-bottom:12px;text-align:center;font-weight:600}
+.pot-box{background:#f0f5e8;border:1px solid #b5d48a;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#2d5a00}
+.pot-row{display:flex;justify-content:space-between;padding:2px 0}
+.pot-total{font-weight:700;font-size:14px;border-top:1px solid #b5d48a;margin-top:4px;padding-top:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    res.status(500).json({ error: 'API key not configured on server' });
+<!-- SETUP -->
+<div id="screen-setup" class="screen active">
+  <div class="card">
+    <div class="stitle">📷 Scan scorecard</div>
+    <p style="font-size:12px;color:#888;margin-bottom:10px">Take a photo of your scorecard — tees, slope, rating, and hole handicaps load automatically.</p>
+    <label id="upload-label" style="display:flex;align-items:center;justify-content:center;gap:8px;border:2px dashed #ccc;border-radius:10px;padding:18px;cursor:pointer;font-size:14px;color:#555;touch-action:manipulation">
+      <span style="font-size:22px">📸</span> Tap to take or upload photo
+      <input type="file" id="scorecard-upload" accept="image/*" capture="environment" style="display:none" onchange="handleScorecardUpload(event)">
+    </label>
+    <div id="upload-status" style="margin-top:8px;font-size:13px;display:none"></div>
+  </div>
+
+  <div class="card" id="tee-card" style="display:none">
+    <div class="stitle">Select tees</div>
+    <div id="tee-opts"></div>
+  </div>
+
+  <div class="card">
+    <div class="stitle">Players (2–5)</div>
+    <div style="display:grid;grid-template-columns:1fr 95px 36px;gap:6px;margin-bottom:6px">
+      <span style="font-size:11px;color:#888">Name</span>
+      <span style="font-size:11px;color:#888">GHIN index</span>
+      <span></span>
+    </div>
+    <div id="player-inputs"></div>
+    <p style="font-size:11px;color:#888;margin-top:6px">Course handicap &amp; strokes applied automatically from selected tees.</p>
+    <button class="btn btn-sm" style="margin-top:10px" onclick="addRow()">+ Add player</button>
+  </div>
+
+  <div class="card">
+    <div class="stitle">Base bet (sets pot)</div>
+    <p style="font-size:12px;color:#666;margin-bottom:10px">Enter the smaller of the two bet amounts. The app calculates the balanced pot automatically.</p>
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">$</span><input type="number" id="base-bet" value="2" min="1" step="1" style="width:90px" oninput="updateBetPreview()"></div>
+    <div id="bet-preview" style="margin-top:10px;font-size:13px;color:#555"></div>
+  </div>
+
+  <button class="btn btn-primary" style="width:100%;font-size:16px;padding:14px" onclick="startRound()">Start Round →</button>
+</div>
+
+<!-- HOLE -->
+<div id="screen-hole" class="screen">
+  <div id="super-banner" class="super-banner" style="display:none">⚡ Super Wolf — biggest loser sets the bet</div>
+  <div class="hole-nav">
+    <button class="btn btn-sm" onclick="prevHole()">◀ Back</button>
+    <div style="text-align:center">
+      <div style="font-size:26px;font-weight:700" id="hole-display">Hole 1</div>
+      <div style="font-size:13px;color:#666" id="hole-sub"></div>
+    </div>
+    <button class="btn btn-sm" onclick="nextHole()">Next ▶</button>
+  </div>
+
+  <div id="mini-lb" style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px"></div>
+
+  <div class="card">
+    <div class="stitle">Wolf: <span id="wolf-lbl" style="color:#1a1a1a;font-weight:700;text-transform:none;letter-spacing:0;font-size:15px"></span></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button class="btn btn-sm" id="btn-blind" onclick="toggleBlind()">🐺 Blind lone (3×)</button>
+      <button class="btn btn-sm" id="btn-lone" onclick="toggleLone()">Lone wolf (2×)</button>
+    </div>
+    <div class="stitle" id="partner-lbl">Pick partners (tap to select/deselect)</div>
+    <div id="partner-btns" style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0"></div>
+    <div id="pot-preview" class="pot-box" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <div class="stitle">🔨 Hammers</div>
+    <p style="font-size:12px;color:#888;margin-bottom:8px">Each hammer doubles the pot. Either team can throw — opponent can accept or concede the hole.</p>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <button class="btn btn-sm" onclick="removeHammer()" style="font-size:20px;line-height:1;padding:4px 14px">−</button>
+      <div id="hammer-display" style="font-size:15px;font-weight:700;flex:1;text-align:center">0 hammers &nbsp;·&nbsp; 1×</div>
+      <button class="btn btn-sm" onclick="addHammer()" style="font-size:20px;line-height:1;padding:4px 14px">+</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+      <button class="btn btn-danger" style="font-size:13px" id="btn-concede-wolf" onclick="concedeHole('wolf')">🐺 Wolf team concedes</button>
+      <button class="btn btn-danger" style="font-size:13px" id="btn-concede-other" onclick="concedeHole('other')">Other team concedes</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="stitle" id="score-hdr">Scores</div>
+    <div id="score-rows"></div>
+  </div>
+
+  <button class="btn btn-primary" style="width:100%;font-size:15px;padding:13px" onclick="scoreHole()">Record Hole &amp; Update Money</button>
+  <div id="hole-result" style="margin-top:10px"></div>
+  <div style="margin-top:10px">
+    <button class="btn" style="width:100%" onclick="showSummary()">📊 Leaderboard</button>
+  </div>
+</div>
+
+<!-- SUMMARY -->
+<div id="screen-summary" class="screen">
+  <div class="tabs">
+    <button class="tab active" id="tl" onclick="showTab('l')">Leaderboard</button>
+    <button class="tab" id="th" onclick="showTab('h')">Hole History</button>
+  </div>
+  <div id="tab-l">
+    <div id="sum-cards"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn" style="flex:1" onclick="goToHole()">← Back to Scoring</button>
+      <button class="btn btn-danger" style="flex:1" onclick="newRound()">New Round</button>
+    </div>
+  </div>
+  <div id="tab-h" style="display:none">
+    <div id="hist-list"></div>
+    <button class="btn" style="width:100%;margin-top:12px" onclick="goToHole()">← Back to Scoring</button>
+  </div>
+</div>
+
+</div>
+<script>
+const COURSE={
+  par:72,
+  holeHdcp:[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],
+  tees:[
+    {name:"Blue",        color:"#1a6fbb", slope:130, rating:72.0, par:72},
+    {name:"White",       color:"#aaaaaa", slope:124, rating:70.0, par:72},
+    {name:"Red (Women)", color:"#cc2222", slope:128, rating:70.0, par:72}
+  ]
+};
+const ORD=['eagle','birdie','par','bogey','double'];
+let S={players:[],baseBet:2,hole:1,wolfOrder:[],holes:[],swBets:{},teeIdx:0};
+let HS={};
+
+function $(i){return document.getElementById(i)}
+function calcCH(idx,t){return Math.round(idx*(t.slope/113)+(t.rating-t.par))}
+function strokes(hdcp,rank){
+  let s=0;
+  if(hdcp>=rank) s++;
+  if(hdcp>=18+rank) s++;
+  if(hdcp<0&&rank>Math.abs(hdcp)) s=-1;
+  return s;
+}
+function netSc(gross,s){return ORD[Math.max(0,Math.min(4,ORD.indexOf(gross)-s))]}
+
+// ── Pot math ──────────────────────────────────────────────────────────────
+// Rule: both teams put in the same total pot.
+// With N players, Wolf picks P partners → wolfTeam = P+1, otherTeam = N-P-1
+// baseBet is the per-player bet for the LARGER team (cheaper side).
+// The smaller team pays (largerTeamSize / smallerTeamSize) * baseBet each.
+// Lone Wolf (1 vs N-1): pot = basePot * loneMult
+// We always compare team sizes and assign baseBet to the bigger team.
+function calcPot(nPlayers, wolfTeamSize, baseBet, loneMult, blindMult){
+  const otherSize = nPlayers - wolfTeamSize;
+  const mult = blindMult ? 3 : loneMult ? 2 : 1;
+  // bigger team pays baseBet each
+  const bigSize  = Math.max(wolfTeamSize, otherSize);
+  const smSize   = Math.min(wolfTeamSize, otherSize);
+  const bigBet   = baseBet * mult;
+  const smBet    = (bigSize / smSize) * baseBet * mult;
+  const pot      = bigBet * bigSize; // = smBet * smSize
+  return {bigSize, smSize, bigBet, smBet, pot,
+          wolfBet: wolfTeamSize >= otherSize ? bigBet : smBet,
+          otherBet: otherSize >= wolfTeamSize ? bigBet : smBet};
+}
+
+function potDescription(baseBet){
+  const n = document.querySelectorAll('.pr').length || S.players.length || 4;
+  if(n < 2) return '';
+  let lines = ['<strong>Pot breakdown at $'+baseBet+' base:</strong><br>'];
+  for(let partners=0; partners<=Math.min(2, n-2); partners++){
+    const wts = partners+1, ots = n-wts;
+    const {wolfBet, otherBet, pot} = calcPot(n, wts, baseBet, false, false);
+    const label = partners===0 ? 'Lone Wolf' : partners===1 ? '1 partner' : '2 partners';
+    const wolfDesc = 'Wolf team ('+wts+'): $'+wolfBet.toFixed(2)+'/player';
+    const otherDesc = 'Other team ('+ots+'): $'+otherBet.toFixed(2)+'/player';
+    lines.push('<em>'+label+'</em> — '+wolfDesc+', '+otherDesc+' → pot $'+pot.toFixed(2));
+  }
+  return lines.join('<br>');
+}
+
+function updateBetPreview(){
+  const v = parseFloat($('base-bet').value)||2;
+  $('bet-preview').innerHTML = potDescription(v);
+}
+
+// ── Tees ──────────────────────────────────────────────────────────────────
+// ── Scorecard photo upload ────────────────────────────────────────────────
+async function handleScorecardUpload(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const status = document.getElementById('upload-status');
+  const label  = document.getElementById('upload-label');
+  status.style.display = 'block';
+  status.innerHTML = '<span style="color:#0066cc">⏳ Reading scorecard...</span>';
+  label.style.borderColor = '#0066cc';
+
+  try {
+    const base64 = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = () => rej(new Error('Read failed'));
+      r.readAsDataURL(file);
+    });
+
+    const mediaType = file.type || 'image/jpeg';
+
+    const response = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            { type: 'text', text: `Extract golf course data from this scorecard image. Respond ONLY with a valid JSON object, no explanation, no markdown.
+
+{
+  "courseName": "string or null",
+  "par": number or null,
+  "tees": [
+    { "name": "tee name", "color": "hex color e.g. #1a6fbb", "slope": number, "rating": number, "par": number }
+  ],
+  "holeHdcp": [18 integers, hole handicap rank holes 1-18, 1=hardest, or null if not visible]
+}
+
+Include ALL tee sets. Return ONLY the JSON.` }
+          ]
+        }]
+      })
+    });
+
+    const data = await response.json();
+    if(data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+
+    const raw = data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+    let applied = [];
+
+    if(parsed.tees && parsed.tees.length > 0){
+      COURSE.tees = parsed.tees.map(t=>({
+        name: t.name||'Unknown', color: t.color||'#888888',
+        slope: t.slope||113, rating: t.rating||72, par: t.par||parsed.par||72
+      }));
+      if(parsed.par) COURSE.par = parsed.par;
+      S.teeIdx = 0;
+      initTees();
+      applied.push(parsed.tees.length + ' tee sets');
+    }
+    if(parsed.holeHdcp && parsed.holeHdcp.length === 18){
+      COURSE.holeHdcp = parsed.holeHdcp;
+      applied.push('hole handicap order');
+    }
+    if(parsed.courseName) applied.push(parsed.courseName);
+
+    if(applied.length === 0){
+      status.innerHTML = '<span style="color:#cc7700">⚠️ Could not read scorecard. Try a clearer photo in good lighting.</span>';
+    } else {
+      status.innerHTML = '<span style="color:#2d7a00">✅ Loaded: ' + applied.join(', ') + '</span>';
+      label.style.borderColor = '#2d7a00';
+      label.style.background = '#f0fce8';
+      const tc = document.getElementById('tee-card');
+      if(tc) tc.style.display = 'block';
+    }
+  } catch(err) {
+    console.error(err);
+    status.innerHTML = '<span style="color:#cc2222">❌ ' + err.message + '</span>';
+    label.style.borderColor = '#cc2222';
+  }
+}
+function initTees(){
+  const c=$('tee-opts');c.innerHTML='';
+  COURSE.tees.forEach((t,i)=>{
+    const d=document.createElement('div');
+    d.className='tee-opt'+(i===S.teeIdx?' sel':'');
+    d.onclick=()=>{S.teeIdx=i;initTees()};
+    d.innerHTML='<div style="display:flex;align-items:center"><span class="tee-dot" style="background:'+t.color+'"></span><strong>'+t.name+'</strong></div>'
+      +'<div style="font-size:13px;color:#666">Slope '+t.slope+' · Rating '+t.rating+'</div>';
+    c.appendChild(d);
+  });
+}
+
+function initSetup(){
+  $('player-inputs').innerHTML='';
+  for(let i=0;i<4;i++) addRow();
+  updateBetPreview();
+  // Hide tee card until scorecard is scanned
+  const tc=document.getElementById('tee-card');
+  if(tc) tc.style.display='none';
+}
+
+function addRow(){
+  const pi=$('player-inputs');
+  if(pi.querySelectorAll('.pr').length>=5) return;
+  const d=document.createElement('div');
+  d.className='pr';
+  d.style.cssText='display:grid;grid-template-columns:1fr 95px 36px;gap:6px;align-items:center;margin-bottom:8px';
+  d.innerHTML='<input type="text" placeholder="Player name">'
+    +'<input type="number" placeholder="10.4" step="0.1" min="-10" max="54">'
+    +'<button class="btn btn-sm" onclick="removeRow(this)" style="padding:6px 8px">✕</button>';
+  pi.appendChild(d);
+  updateBetPreview();
+}
+
+function removeRow(btn){
+  if(document.querySelectorAll('.pr').length<=2) return;
+  btn.closest('.pr').remove();
+  updateBetPreview();
+}
+
+function startRound(){
+  const tc=document.getElementById('tee-card');
+  if(!tc||tc.style.display==='none'){
+    alert('Please search for your course first so tee ratings can be loaded.');return;
+  }
+  const tee=COURSE.tees[S.teeIdx];
+  const players=[];
+  document.querySelectorAll('.pr').forEach(row=>{
+    const ins=row.querySelectorAll('input');
+    const name=ins[0].value.trim();
+    if(!name) return;
+    const idx=parseFloat(ins[1].value);
+    players.push({name, idx:isNaN(idx)?null:idx, courseHdcp:isNaN(idx)?0:calcCH(idx,tee), balance:0});
+  });
+  if(players.length<2){alert('Add at least 2 players');return;}
+  S.players=players;
+  S.baseBet=parseFloat($('base-bet').value)||2;
+  S.hole=1;S.holes=[];S.swBets={};
+  S.wolfOrder=Array.from({length:18},(_,i)=>i%players.length);
+  showScr('hole');renderHole();
+}
+
+// ── Hole rendering ────────────────────────────────────────────────────────
+function renderHole(){
+  const h=S.hole, isSuper=h>=16;
+  const wi=S.wolfOrder[h-1];
+  const rank=COURSE.holeHdcp[h-1];
+  $('hole-display').textContent='Hole '+h;
+  $('super-banner').style.display=isSuper?'block':'none';
+  $('wolf-lbl').textContent=S.players[wi].name;
+  $('score-hdr').textContent='Scores — Hole Hdcp #'+rank;
+
+  const bet=isSuper?(S.swBets[h]||null):S.baseBet;
+  $('hole-sub').textContent=bet
+    ?(isSuper?'$'+bet+' base · Super Wolf · Hdcp #'+rank:'$'+bet+' base · Hdcp #'+rank)
+    :(isSuper?'Set bet below · Hdcp #'+rank:'$'+S.baseBet+' base · Hdcp #'+rank);
+
+  // super wolf bet input
+  let sbr=$('sbr');
+  if(isSuper){
+    if(!sbr){
+      sbr=document.createElement('div');sbr.id='sbr';
+      sbr.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:12px';
+      sbr.innerHTML='<label style="font-size:13px;color:#666">Super Wolf bet: $</label>'
+        +'<input type="number" id="sbi" min="0" style="width:90px" oninput="setSWBet(this.value)">';
+      $('screen-hole').querySelector('.card').insertBefore(sbr,$('screen-hole').querySelector('.card').firstChild);
+    }
+    $('sbi').value=bet||'';
+  } else {if(sbr)sbr.remove();}
+
+  // partner buttons
+  const pb=$('partner-btns');pb.innerHTML='';
+  S.players.forEach((p,i)=>{
+    if(i===wi) return;
+    const s=strokes(p.courseHdcp,rank);
+    const b=document.createElement('button');
+    b.className='wolf-btn';b.dataset.idx=i;
+    b.innerHTML=p.name+(s>0?' <span class="badge bstroke">+'+s+'</span>':'');
+    b.onclick=()=>selPartner(i);
+    pb.appendChild(b);
+  });
+
+  const saved=S.holes.find(x=>x.hole===h);
+  HS=saved?JSON.parse(JSON.stringify(saved))
+    :{hole:h, wi, partners:[], lone:false, blind:false, scores:{}, result:null, hammers:0};
+  updHammerDisplay();
+
+  updWolfBtns();
+  updConcedeBtns();
+  renderScoreRows(wi,rank);
+  renderMiniLB();
+  $('hole-result').innerHTML='';
+  if(HS.result) showResult();
+}
+
+function setSWBet(v){
+  const h=S.hole,val=parseFloat(v);
+  if(!isNaN(val)&&val>0){
+    S.swBets[h]=val;
+    $('hole-sub').textContent='$'+val+' base · Super Wolf';
+  }
+}
+
+function toggleBlind(){
+  HS.blind=!HS.blind;
+  if(HS.blind){HS.lone=true;HS.partners=[];}
+  else HS.lone=false;
+  updWolfBtns();updPotPreview();updConcedeBtns();
+}
+function toggleLone(){
+  if(HS.lone&&!HS.blind){HS.lone=false;}
+  else{HS.lone=true;HS.blind=false;HS.partners=[];}
+  updWolfBtns();updPotPreview();updConcedeBtns();
+}
+function selPartner(idx){
+  if(HS.lone){HS.lone=false;HS.blind=false;}
+  const pos=HS.partners.indexOf(idx);
+  if(pos>=0){
+    HS.partners.splice(pos,1);
+  } else {
+    // max 2 partners
+    if(HS.partners.length>=2){
+      alert('Maximum 2 partners allowed.');return;
+    }
+    HS.partners.push(idx);
+  }
+  updWolfBtns();updPotPreview();updConcedeBtns();
+  renderScoreRows(S.wolfOrder[S.hole-1], COURSE.holeHdcp[S.hole-1]);
+}
+
+function updWolfBtns(){
+  $('btn-blind').className=HS.blind?'btn btn-sm blind-sel':'btn btn-sm';
+  $('btn-lone').className=(HS.lone&&!HS.blind)?'btn btn-sm lone-sel':'btn btn-sm';
+  $('partner-lbl').textContent=HS.lone?'Playing alone — no partners':'Pick partners (tap to select/deselect, max 2)';
+  document.querySelectorAll('.wolf-btn').forEach(b=>{
+    const i=parseInt(b.dataset.idx);
+    b.className='wolf-btn'+(HS.partners.includes(i)&&!HS.lone?' sel':'');
+  });
+}
+
+function updPotPreview(){
+  const pp=$('pot-preview');
+  const h=S.hole;
+  const bet=h>=16?(S.swBets[h]||S.baseBet):S.baseBet;
+  const n=S.players.length;
+  const wts=1+HS.partners.length; // wolf team size
+  const ots=n-wts;
+  const {wolfBet,otherBet,pot}=calcPot(n,wts,bet,HS.lone,HS.blind);
+  const wolfNames=[S.players[HS.wi].name,...HS.partners.map(i=>S.players[i].name)].join(', ');
+  const otherNames=S.players.map((p,i)=>i).filter(i=>i!==HS.wi&&!HS.partners.includes(i)).map(i=>S.players[i].name).join(', ');
+  const multLabel=HS.blind?'Blind 3×':HS.lone?'Lone 2×':'';
+  pp.style.display='block';
+  const hamMult=Math.pow(2,HS.hammers||0);
+  const hamPot=pot*hamMult;
+  pp.innerHTML='<div class="pot-row"><span>🐺 Wolf team ('+wts+'): '+wolfNames+'</span><span><strong>$'+(wolfBet*hamMult).toFixed(2)+'/ea</strong></span></div>'
+    +'<div class="pot-row"><span>Other team ('+ots+'): '+otherNames+'</span><span><strong>$'+(otherBet*hamMult).toFixed(2)+'/ea</strong></span></div>'
+    +(multLabel?'<div class="pot-row" style="color:#854f0b"><span>'+multLabel+'</span></div>':'')
+    +((HS.hammers||0)>0?'<div class="pot-row" style="color:#cc2222"><span>🔨 Hammers: '+(HS.hammers||0)+' ('+hamMult+'×)</span></div>':'')
+    +'<div class="pot-row pot-total"><span>Total pot</span><span>$'+hamPot.toFixed(2)+'</span></div>';
+}
+
+function renderScoreRows(wi,rank){
+  const sr=$('score-rows');sr.innerHTML='';
+  S.players.forEach((p,i)=>{
+    const s=strokes(p.courseHdcp,rank);
+    const saved=HS.scores[i]||'par';
+    const d=document.createElement('div');d.className='player-row';
+    const sLbl=s>0?'<span class="badge bstroke" style="margin-left:4px">+'+s+'</span>'
+      :(s<0?'<span class="badge" style="background:#faeeda;color:#854f0b;margin-left:4px">'+s+'</span>':'');
+    const chLbl=p.courseHdcp!==null?'<span style="font-size:11px;color:#888;margin-left:4px">CH '+p.courseHdcp+'</span>':'';
+    d.innerHTML='<span style="flex:1;font-size:14px;font-weight:600">'+p.name
+      +(i===wi?' <span class="badge bw">🐺 Wolf</span>':((HS.partners||[]).includes(i)&&!HS.lone?' <span class="badge bp">🤝 Partner</span>':''))
+      +chLbl+sLbl+'</span>'
+      +'<div style="display:flex;gap:4px">'
+      +[['eagle','E','ae'],['birdie','B','ab'],['par','P','ap'],['bogey','B+','abg'],['double','++','ad']].map(([sc,lbl,cls])=>
+        '<button class="score-btn'+(saved===sc?' '+cls:'')+'" onclick="setSc('+i+',\''+sc+'\',\''+cls+'\',this)">'+lbl+'</button>'
+      ).join('')+'</div>';
+    sr.appendChild(d);
+  });
+}
+
+function setSc(idx,score,cls,btn){
+  HS.scores[idx]=score;
+  btn.closest('.player-row').querySelectorAll('.score-btn').forEach(b=>b.className='score-btn');
+  btn.className='score-btn '+cls;
+}
+
+function addHammer(){
+  HS.hammers=(HS.hammers||0)+1;
+  updHammerDisplay();updPotPreview();
+}
+function removeHammer(){
+  HS.hammers=Math.max(0,(HS.hammers||0)-1);
+  updHammerDisplay();updPotPreview();
+}
+function updHammerDisplay(){
+  const n=HS.hammers||0;
+  const mult=Math.pow(2,n);
+  const d=document.getElementById('hammer-display');
+  if(d) d.textContent=n+' hammer'+(n===1?'':'s')+' · '+mult+'×';
+}
+function updConcedeBtns(){
+  const wi=S.wolfOrder[S.hole-1];
+  const wt=[wi,...(HS.partners||[])];
+  const ot=S.players.map((_,i)=>i).filter(i=>!wt.includes(i));
+  const wolfNames=wt.map(i=>S.players[i].name).join(', ');
+  const otherNames=ot.map(i=>S.players[i].name).join(', ');
+  const bw=document.getElementById('btn-concede-wolf');
+  const bo=document.getElementById('btn-concede-other');
+  if(bw) bw.textContent='🐺 '+wolfNames+' concede';
+  if(bo) bo.textContent='⛳ '+otherNames+' concede';
+}
+function concedeHole(side){
+  // Reverse previous result for this hole if re-recording
+  const prevH=S.holes.find(x=>x.hole===S.hole);
+  if(prevH&&prevH.result){
+    prevH.result.deltas.forEach((d,i)=>{ S.players[i].balance-=d; });
+  }
+  const wi=S.wolfOrder[S.hole-1];
+  const wt=[wi,...(HS.partners||[])];
+  const ot=S.players.map((_,i)=>i).filter(i=>!wt.includes(i));
+  const wolfNames=wt.map(i=>S.players[i].name).join(' & ');
+  const otherNames=ot.map(i=>S.players[i].name).join(' & ');
+  const concedingNames=side==='wolf'?wolfNames:otherNames;
+  if(!confirm(concedingNames+' concede this hole?')) return;
+  const h=S.hole;
+  const {lone,blind,scores}=HS;
+  const baseBet=h>=16?(S.swBets[h]||S.baseBet):S.baseBet;
+  const n=S.players.length;
+  const hamMult=Math.pow(2,HS.hammers||0);
+  const {wolfBet,otherBet,pot}=calcPot(n,wt.length,baseBet,lone,blind);
+  const finalWolfBet=wolfBet*hamMult;
+  const finalOtherBet=otherBet*hamMult;
+  const finalPot=pot*hamMult;
+  const wolfWins = side==='other'; // if other concedes, wolf wins
+  let deltas=new Array(n).fill(0);
+  if(wolfWins){
+    ot.forEach(i=>deltas[i]-=finalOtherBet);
+    const totalFromOthers=finalOtherBet*ot.length;
+    wt.forEach(i=>deltas[i]+=totalFromOthers/wt.length);
+  } else {
+    wt.forEach(i=>deltas[i]-=finalWolfBet);
+    const totalFromWolf=finalWolfBet*wt.length;
+    ot.forEach(i=>deltas[i]+=totalFromWolf/ot.length);
+  }
+  S.players.forEach((p,i)=>p.balance+=deltas[i]);
+  HS.result={deltas,wolfWins,tie:false,wolfBet,otherBet,pot,bb:1,birdPot:finalPot,ns:{},wt,ot,hammers:HS.hammers||0,hamMult,conceded:true,concededBy:concedingNames};
+  const ei=S.holes.findIndex(x=>x.hole===h);
+  if(ei>=0)S.holes[ei]=JSON.parse(JSON.stringify(HS));
+  else S.holes.push(JSON.parse(JSON.stringify(HS)));
+  showResult();
+}
+
+function birdMult(team,scores){
+  const bi=team.filter(i=>(scores[i]||'par')==='birdie').length;
+  const ei=team.filter(i=>(scores[i]||'par')==='eagle').length;
+  return ei>0?3:bi>=2?4:bi===1?2:1;
+}
+
+function renderMiniLB(){
+  const el=document.getElementById('mini-lb');
+  if(!el) return;
+  if(!S.players||!S.players.length){el.innerHTML='';return;}
+  const sorted=[...S.players].map((p,i)=>({...p,i})).sort((a,b)=>b.balance-a.balance);
+  el.innerHTML=sorted.map((p,rank)=>{
+    const cl=p.balance>0?'#2d7a00':p.balance<0?'#a32d2d':'#666';
+    const amt=(p.balance>=0?'+':'')+'$'+p.balance.toFixed(2);
+    return '<div style="background:#fff;border:1px solid #e5e5e0;border-radius:8px;padding:6px 10px;white-space:nowrap;flex-shrink:0">' 
+      +'<span style="font-size:11px;color:#888">#'+(rank+1)+' </span>' 
+      +'<span style="font-size:13px;font-weight:600">'+p.name+'</span> ' 
+      +'<span style="font-size:13px;font-weight:700;color:'+cl+'">'+amt+'</span>' 
+      +'</div>';
+  }).join('');
+}
+
+function recordAndAdvance(){
+  showResult();
+  renderMiniLB();
+  setTimeout(()=>{
+    if(S.hole < 18){ S.hole++; renderHole(); }
+    else { showSummary(); }
+  }, 1800);
+}
+
+function scoreHole(){
+  const h=S.hole, wi=S.wolfOrder[h-1];
+  const rank=COURSE.holeHdcp[h-1];
+  const {partners,lone,blind,scores}=HS;
+  const baseBet=h>=16?(S.swBets[h]||S.baseBet):S.baseBet;
+  const n=S.players.length;
+  // Reverse previous result for this hole if re-recording
+  const prev=S.holes.find(x=>x.hole===h);
+  if(prev&&prev.result){
+    prev.result.deltas.forEach((d,i)=>{ S.players[i].balance-=d; });
+  }
+
+  // teams
+  const wt=[wi,...partners];
+  const ot=S.players.map((_,i)=>i).filter(i=>!wt.includes(i));
+
+  // net scores
+  const ns={};
+  S.players.forEach((p,i)=>{ns[i]=netSc(scores[i]||'par',strokes(p.courseHdcp,rank));});
+
+  // best net score per team
+  function best(t){return t.reduce((b,i)=>ORD.indexOf(ns[i]||'par')<ORD.indexOf(b)?ns[i]:b,'double');}
+  const wb=best(wt),ob=best(ot);
+  const wolfWins=ORD.indexOf(wb)<ORD.indexOf(ob), tie=wb===ob;
+
+  // bird multiplier on gross scores
+  const bb=Math.max(birdMult(wt,scores),birdMult(ot,scores));
+
+  // hammer multiplier
+  const hamMult=Math.pow(2,HS.hammers||0);
+
+  // pot calculation
+  const {wolfBet,otherBet,pot}=calcPot(n,wt.length,baseBet,lone,blind);
+  const birdPot=pot*bb*hamMult;
+  const birdWolfBet=wolfBet*bb*hamMult;
+  const birdOtherBet=otherBet*bb*hamMult;
+
+  let deltas=new Array(n).fill(0);
+  if(!tie){
+    if(wolfWins){
+      // wolf team each wins otherBet*bb from each opponent (pot splits evenly to wolf team)
+      ot.forEach(i=>deltas[i]-=birdOtherBet);
+      const wolfShare=birdPot/wt.length;
+      wt.forEach(i=>deltas[i]+=wolfShare);
+      // adjust: wolf team put in birdWolfBet each, so net = wolfShare - birdWolfBet
+      // Actually simpler: winner takes loser contributions
+      // Reset and recalc cleanly:
+      deltas=new Array(n).fill(0);
+      ot.forEach(i=>deltas[i]-=birdOtherBet);
+      // wolf team collects total from others, split equally
+      const totalFromOthers=birdOtherBet*ot.length;
+      wt.forEach(i=>deltas[i]+=totalFromOthers/wt.length);
+    } else {
+      wt.forEach(i=>deltas[i]-=birdWolfBet);
+      const totalFromWolf=birdWolfBet*wt.length;
+      ot.forEach(i=>deltas[i]+=totalFromWolf/ot.length);
+    }
+  }
+
+  S.players.forEach((p,i)=>p.balance+=deltas[i]);
+  HS.result={deltas,wolfWins,tie,wolfBet,otherBet,pot,bb,birdPot,ns,wt,ot,hammers:HS.hammers||0,hamMult};
+  const ei=S.holes.findIndex(x=>x.hole===h);
+  if(ei>=0)S.holes[ei]=JSON.parse(JSON.stringify(HS));
+  else S.holes.push(JSON.parse(JSON.stringify(HS)));
+  recordAndAdvance();
+}
+
+function showResult(){
+  const r=HS.result;if(!r) return;
+  let html='<div class="card">';
+  if(r.conceded){
+    const winner=r.wolfWins?'🐺 Wolf team wins':'Other team wins';
+    html+='<p style="font-size:15px;font-weight:700">⛳ '+r.concededBy+' conceded — '+winner+'</p>';
+  } else if(r.tie){
+    html+='<p style="font-size:15px;font-weight:700">Tie — no money moves</p>';
+  } else {
+    const winner=r.wolfWins?'🐺 Wolf team wins':'Other team wins';
+    let mults=[];
+    if(HS.blind) mults.push('Blind 3×');
+    else if(HS.lone) mults.push('Lone 2×');
+    if(r.bb>1) mults.push('Bird '+r.bb+'×');
+    if(r.hammers>0) mults.push(r.hammers+' hammer'+(r.hammers===1?'':'s')+' '+r.hamMult+'×');
+    html+='<p style="font-size:15px;font-weight:700;margin-bottom:8px">'+winner
+      +(mults.length?' <span style="font-size:12px;color:#666;font-weight:400">('+mults.join(' · ')+')</span>':'')+'</p>';
+
+    // pot summary
+    html+='<div style="background:#f0f5e8;border:1px solid #b5d48a;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#2d5a00">'
+      +'<div style="display:flex;justify-content:space-between"><span>Wolf team ('+r.wt.length+'): $'+r.wolfBet.toFixed(2)+'/ea</span>'
+      +'<span>Other team ('+r.ot.length+'): $'+r.otherBet.toFixed(2)+'/ea</span></div>'
+      +(r.bb>1?'<div style="color:#854f0b;margin-top:2px">Bird bonus '+r.bb+'× → pot $'+r.birdPot.toFixed(2)+'</div>':'<div style="margin-top:2px">Pot: $'+r.pot.toFixed(2)+'</div>')
+      +'</div>';
+
+    // gross → net
+    html+='<div style="margin-bottom:10px">';
+    S.players.forEach((p,i)=>{
+      const gross=HS.scores[i]||'par',net=r.ns[i];
+      html+='<div style="font-size:12px;color:#666;padding:1px 0">'+p.name+': '+gross+(net!==gross?' → net <strong>'+net+'</strong>':'')+'</div>';
+    });
+    html+='</div>';
+
+    // money moves
+    S.players.forEach((p,i)=>{
+      const d=r.deltas[i];
+      if(d!==0) html+='<div style="display:flex;justify-content:space-between;font-size:14px;padding:5px 0;border-bottom:1px solid #f0f0ec">'
+        +'<span>'+p.name+'</span><span class="'+(d>0?'pos':'neg')+'">'+(d>0?'+':'')+'$'+d.toFixed(2)+'</span></div>';
+    });
+  }
+  html+='</div>';
+  $('hole-result').innerHTML=html;
+}
+
+function prevHole(){if(S.hole>1){S.hole--;renderHole();}}
+function nextHole(){if(S.hole<18){S.hole++;renderHole();}else showSummary();}
+function goToHole(){showScr('hole');renderHole();}
+function showSummary(){showScr('summary');renderSummary();}
+
+function renderSummary(){
+  // Leaderboard tab
+  const sorted=[...S.players].map((p,i)=>({...p,i})).sort((a,b)=>b.balance-a.balance);
+  let html='';
+  sorted.forEach((p,r)=>{
+    const cl=p.balance>0?'pos':p.balance<0?'neg':'';
+    html+='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center">'
+      +'<div><span style="font-size:13px;color:#888">#'+(r+1)+' </span><strong style="font-size:16px">'+p.name+'</strong>'
+      +(p.idx!==null?'<span style="font-size:11px;color:#888;margin-left:6px">GHIN '+p.idx+' · CH '+p.courseHdcp+'</span>':'')
+      +'</div><span class="'+cl+'" style="font-size:20px">'+(p.balance>=0?'+':'')+'$'+p.balance.toFixed(2)+'</span></div></div>';
+  });
+  html+='<div class="card"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div class="metric"><div class="metric-val">'+S.holes.length+'</div><div class="metric-lbl">holes played</div></div>'
+    +'<div class="metric"><div class="metric-val">'+(18-S.holes.length)+'</div><div class="metric-lbl">remaining</div></div>'
+    +'</div></div>';
+  $('sum-cards').innerHTML=html;
+
+  // History tab — running totals table
+  const holesAsc=[...S.holes].sort((a,b)=>a.hole-b.hole);
+  const run=new Array(S.players.length).fill(0);
+  const runAfter={};
+  holesAsc.forEach(hd=>{
+    if(hd.result) hd.result.deltas.forEach((d,i)=>run[i]+=d);
+    runAfter[hd.hole]=[...run];
+  });
+
+  if(!holesAsc.length){
+    $('hist-list').innerHTML='<p style="font-size:14px;color:#888">No holes recorded yet.</p>';
     return;
   }
 
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify(req.body)
-    });
-    const data = await response.json();
-    res.status(response.status).json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const n=S.players.length;
+  const cols='auto repeat('+n+',1fr)';
+
+  // Header row
+  let hh='<div class="card" style="overflow-x:auto">'
+    +'<div class="stitle" style="margin-bottom:10px">Hole-by-hole · tap a hole to edit</div>'
+    +'<div style="display:grid;grid-template-columns:'+cols+';gap:4px;padding:4px 0 6px;border-bottom:2px solid #e5e5e0;margin-bottom:4px">'
+    +'<span style="font-size:11px;color:#888;font-weight:700">Hole</span>'
+    +S.players.map(p=>'<span style="font-size:11px;color:#888;font-weight:700;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.name+'</span>').join('')
+    +'</div>';
+
+  holesAsc.forEach(hd=>{
+    const wn=S.players[hd.wi].name;
+    const partnerNames=hd.partners&&hd.partners.length?hd.partners.map(i=>S.players[i].name).join(', '):'';
+    const tag=hd.blind?'<span class="badge bb">Blind</span>'
+      :hd.lone?'<span class="badge bl">Lone</span>'
+      :partnerNames?'<span class="badge bw">+'+partnerNames+'</span>'
+      :'<span class="badge bw">No pick</span>';
+    const after=runAfter[hd.hole]||new Array(n).fill(0);
+
+    hh+='<div style="border-bottom:1px solid #f0f0ec;padding:6px 0;cursor:pointer" onclick="editHole('+hd.hole+')">'
+      // hole label row
+      +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
+      +'<strong style="font-size:13px">H'+hd.hole+(hd.hole>=16?' <span class="badge bs">S</span>':'')+'</strong>'
+      +'<span style="font-size:11px;color:#555">'+wn+' '+tag+'</span>'
+      +'<span style="font-size:11px;color:#0066cc;margin-left:auto">✎</span>'
+      +'</div>';
+
+    if(hd.result){
+      // hole delta row
+      hh+='<div style="display:grid;grid-template-columns:'+cols+';gap:4px;margin-bottom:2px">'
+        +'<span style="font-size:10px;color:#aaa;align-self:center">hole</span>'
+        +S.players.map((_,i)=>{
+          const d=hd.result.deltas[i];
+          const cl=d>0?'#2d7a00':d<0?'#a32d2d':'#bbb';
+          return '<span style="font-size:12px;text-align:right;color:'+cl+';font-weight:600">'+(d===0?'–':(d>0?'+':'')+'$'+Math.abs(d).toFixed(0))+'</span>';
+        }).join('')
+        +'</div>'
+      // running total row
+        +'<div style="display:grid;grid-template-columns:'+cols+';gap:4px">'
+        +'<span style="font-size:10px;color:#aaa;align-self:center">total</span>'
+        +after.map(v=>{
+          const cl=v>0?'#2d7a00':v<0?'#a32d2d':'#aaa';
+          return '<span style="font-size:13px;text-align:right;color:'+cl+';font-weight:700">'+(v===0?'$0':(v>0?'+':'')+'$'+Math.abs(v).toFixed(0))+'</span>';
+        }).join('')
+        +'</div>';
+    } else {
+      hh+='<span style="font-size:12px;color:#888">Tie</span>';
+    }
+    hh+='</div>';
+  });
+
+  hh+='</div>';
+  $('hist-list').innerHTML=hh;
 }
+
+function editHole(h){
+  S.hole=h;
+  showScr('hole');
+  renderHole();
+}
+function showTab(t){
+  $('tl').className='tab'+(t==='l'?' active':'');
+  $('th').className='tab'+(t==='h'?' active':'');
+  $('tab-l').style.display=t==='l'?'block':'none';
+  $('tab-h').style.display=t==='h'?'block':'none';
+  if(t==='l') renderSummary();
+}
+
+function newRound(){
+  if(!confirm('Start a new round? This will clear all scores.')) return;
+  S={players:[],baseBet:2,hole:1,wolfOrder:[],holes:[],swBets:{},teeIdx:0};
+  showScr('setup');initSetup();
+}
+
+function showScr(n){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  $('screen-'+n).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+initSetup();
+</script>
+</body>
+</html>
