@@ -371,28 +371,29 @@ function renderStrokeSummary(){
 
   // Find which holes each player gets strokes on
   let html = '';
+  // Relative handicaps — subtract lowest
+  const minCH = Math.min(...players.map(p => p.courseHdcp));
   players.forEach(p => {
+    const relHdcp = p.courseHdcp - minCH;
     const strokeHoles = [];
     const doubleHoles = [];
     COURSE.holeHdcp.forEach((rank, i) => {
-      const s = strokes(p.courseHdcp, rank);
+      const s = strokes(relHdcp, rank);
       if(s === 2) doubleHoles.push(i+1);
       else if(s === 1) strokeHoles.push(i+1);
     });
     const totalStrokes = strokeHoles.length + doubleHoles.length * 2;
+    const isLowest = relHdcp === 0;
     html += '<div style="padding:8px 0;border-bottom:1px solid #f0f0ec">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
-      + '<strong style="font-size:14px">'+p.name+'</strong>'
-      + '<span style="font-size:13px;color:#666">GHIN '+p.idx+' → CH '+p.courseHdcp+' · <strong>'+totalStrokes+' strokes</strong></span>'
+      + '<strong style="font-size:14px">'+p.name+(isLowest?' <span class="badge" style="background:#fff3cd;color:#856404">low</span>':'')+'</strong>'
+      + '<span style="font-size:13px;color:#666">CH '+p.courseHdcp+' → net '+relHdcp+' · <strong>'+totalStrokes+' strokes</strong></span>'
       + '</div>';
-    if(strokeHoles.length){
-      html += '<div style="font-size:12px;color:#555">+1 on holes: '+strokeHoles.join(', ')+'</div>';
-    }
-    if(doubleHoles.length){
-      html += '<div style="font-size:12px;color:#854f0b">+2 on holes: '+doubleHoles.join(', ')+'</div>';
-    }
-    if(!strokeHoles.length && !doubleHoles.length){
-      html += '<div style="font-size:12px;color:#888">No strokes on selected tees</div>';
+    if(isLowest){
+      html += '<div style="font-size:12px;color:#888">Plays scratch — sets the baseline</div>';
+    } else if(strokeHoles.length || doubleHoles.length){
+      if(strokeHoles.length) html += '<div style="font-size:12px;color:#555">+1 on holes: '+strokeHoles.join(', ')+'</div>';
+      if(doubleHoles.length) html += '<div style="font-size:12px;color:#854f0b">+2 on holes: '+doubleHoles.join(', ')+'</div>';
     }
     html += '</div>';
   });
@@ -455,6 +456,9 @@ function startRound(){
     const idx=parseFloat(ins[1].value);
     players.push({name, idx:isNaN(idx)?null:idx, courseHdcp:isNaN(idx)?0:calcCH(idx,tee), balance:0});
   });
+  // Adjust course handicaps relative to lowest — Wolf style
+  const minHdcp = Math.min(...players.map(p=>p.courseHdcp));
+  players.forEach(p=>{ p.courseHdcp = p.courseHdcp - minHdcp; });
   if(players.length<2){alert('Add at least 2 players');return;}
   S.players=players;
   S.baseBet=parseFloat($('base-bet').value)||2;
