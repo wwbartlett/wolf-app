@@ -252,14 +252,27 @@ async function handleScorecardUpload(event){
   label.style.borderColor = '#0066cc';
 
   try {
+    // Convert image to JPEG via canvas (handles HEIC and other formats)
     const base64 = await new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload = () => res(r.result.split(',')[1]);
-      r.onerror = () => rej(new Error('Read failed'));
-      r.readAsDataURL(file);
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        // Scale down if too large (max 1600px wide)
+        const maxW = 1600;
+        const scale = img.width > maxW ? maxW / img.width : 1;
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        URL.revokeObjectURL(objectUrl);
+        res(dataUrl.split(',')[1]);
+      };
+      img.onerror = () => rej(new Error('Could not load image'));
+      img.src = objectUrl;
     });
-
-    const mediaType = file.type || 'image/jpeg';
+    const mediaType = 'image/jpeg';
 
     const response = await fetch('/api/claude', {
       method: 'POST',
