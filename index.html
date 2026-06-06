@@ -100,6 +100,11 @@ input[type=text],input[type=number]{width:100%;padding:9px 12px;border:1px solid
     <div id="bet-preview" style="margin-top:10px;font-size:13px;color:#555"></div>
   </div>
 
+  <div class="card" id="stroke-summary" style="display:none">
+    <div class="stitle">📋 Stroke summary</div>
+    <div id="stroke-summary-rows"></div>
+  </div>
+
   <button class="btn btn-primary" style="width:100%;font-size:16px;padding:14px" onclick="startRound()">Start Round →</button>
 </div>
 
@@ -317,6 +322,7 @@ Include ALL tee sets. Return ONLY the JSON.` }
       if(parsed.par) COURSE.par = parsed.par;
       S.teeIdx = 0;
       initTees();
+      renderStrokeSummary();
       applied.push(parsed.tees.length + ' tee sets');
     }
     if(parsed.holeHdcp && parsed.holeHdcp.length === 18){
@@ -340,12 +346,67 @@ Include ALL tee sets. Return ONLY the JSON.` }
     label.style.borderColor = '#cc2222';
   }
 }
+function renderStrokeSummary(){
+  const card = document.getElementById('stroke-summary');
+  const rows = document.getElementById('stroke-summary-rows');
+  if(!card||!rows) return;
+
+  // Need players and tee selected
+  const tee = COURSE.tees[S.teeIdx];
+  if(!tee) return;
+
+  const playerRows = document.querySelectorAll('.pr');
+  const players = [];
+  playerRows.forEach(row => {
+    const ins = row.querySelectorAll('input');
+    const name = ins[0].value.trim();
+    const idx = parseFloat(ins[1].value);
+    if(name && !isNaN(idx)){
+      const courseHdcp = calcCH(idx, tee);
+      players.push({name, idx, courseHdcp});
+    }
+  });
+
+  if(!players.length){ card.style.display='none'; return; }
+
+  // Find which holes each player gets strokes on
+  let html = '';
+  players.forEach(p => {
+    const strokeHoles = [];
+    const doubleHoles = [];
+    COURSE.holeHdcp.forEach((rank, i) => {
+      const s = strokes(p.courseHdcp, rank);
+      if(s === 2) doubleHoles.push(i+1);
+      else if(s === 1) strokeHoles.push(i+1);
+    });
+    const totalStrokes = strokeHoles.length + doubleHoles.length * 2;
+    html += '<div style="padding:8px 0;border-bottom:1px solid #f0f0ec">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+      + '<strong style="font-size:14px">'+p.name+'</strong>'
+      + '<span style="font-size:13px;color:#666">GHIN '+p.idx+' → CH '+p.courseHdcp+' · <strong>'+totalStrokes+' strokes</strong></span>'
+      + '</div>';
+    if(strokeHoles.length){
+      html += '<div style="font-size:12px;color:#555">+1 on holes: '+strokeHoles.join(', ')+'</div>';
+    }
+    if(doubleHoles.length){
+      html += '<div style="font-size:12px;color:#854f0b">+2 on holes: '+doubleHoles.join(', ')+'</div>';
+    }
+    if(!strokeHoles.length && !doubleHoles.length){
+      html += '<div style="font-size:12px;color:#888">No strokes on selected tees</div>';
+    }
+    html += '</div>';
+  });
+
+  rows.innerHTML = html;
+  card.style.display = 'block';
+}
+
 function initTees(){
   const c=$('tee-opts');c.innerHTML='';
   COURSE.tees.forEach((t,i)=>{
     const d=document.createElement('div');
     d.className='tee-opt'+(i===S.teeIdx?' sel':'');
-    d.onclick=()=>{S.teeIdx=i;initTees()};
+    d.onclick=()=>{S.teeIdx=i;initTees();renderStrokeSummary()};
     d.innerHTML='<div style="display:flex;align-items:center"><span class="tee-dot" style="background:'+t.color+'"></span><strong>'+t.name+'</strong></div>'
       +'<div style="font-size:13px;color:#666">Slope '+t.slope+' · Rating '+t.rating+'</div>';
     c.appendChild(d);
@@ -367,8 +428,8 @@ function addRow(){
   const d=document.createElement('div');
   d.className='pr';
   d.style.cssText='display:grid;grid-template-columns:1fr 95px 36px;gap:6px;align-items:center;margin-bottom:8px';
-  d.innerHTML='<input type="text" placeholder="Player name">'
-    +'<input type="number" placeholder="10.4" step="0.1" min="-10" max="54">'
+  d.innerHTML='<input type="text" placeholder="Player name" oninput="renderStrokeSummary()">'
+    +'<input type="number" placeholder="10.4" step="0.1" min="-10" max="54" oninput="renderStrokeSummary()">'
     +'<button class="btn btn-sm" onclick="removeRow(this)" style="padding:6px 8px">✕</button>';
   pi.appendChild(d);
   updateBetPreview();
