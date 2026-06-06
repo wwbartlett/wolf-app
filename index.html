@@ -384,10 +384,10 @@ async function processScorecardScans(){
   "tees": [
     { "name": "tee name", "color": "hex color e.g. #1a6fbb", "slope": number, "rating": number, "par": number }
   ],
-  "holeHdcp": [18 integers, hole handicap rank holes 1-18, 1=hardest, or null if not visible]
+  "holeHdcp": [18 integers, MEN'S hole handicap rank for holes 1-18, 1=hardest, or null if not visible]
 }
 
-Include ALL tee sets found across both images. Return ONLY the JSON.`});
+Include ALL tee sets found across both images. For holeHdcp use the MEN'S handicap row only (not women's). Return ONLY the JSON.`});
 
     const response = await fetch('/api/claude', {
       method: 'POST',
