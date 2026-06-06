@@ -67,13 +67,42 @@ input[type=text],input[type=number]{width:100%;padding:9px 12px;border:1px solid
 <!-- SETUP -->
 <div id="screen-setup" class="screen active">
   <div class="card">
-    <div class="stitle">📷 Scan scorecard</div>
-    <p style="font-size:12px;color:#888;margin-bottom:10px">Take a photo of your scorecard — tees, slope, rating, and hole handicaps load automatically.</p>
-    <label id="upload-label" style="display:flex;align-items:center;justify-content:center;gap:8px;border:2px dashed #ccc;border-radius:10px;padding:18px;cursor:pointer;font-size:14px;color:#555;touch-action:manipulation">
-      <span style="font-size:22px">📸</span> Tap to take or upload photo
-      <input type="file" id="scorecard-upload" accept="image/*" capture="environment" style="display:none" onchange="handleScorecardUpload(event)">
-    </label>
-    <div id="upload-status" style="margin-top:8px;font-size:13px;display:none"></div>
+    <div class="stitle">⛳ Course setup</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="tab-scan" class="btn btn-primary btn-sm" style="flex:1" onclick="switchCourseTab('scan')">📷 Scan scorecard</button>
+      <button id="tab-manual" class="btn btn-sm" style="flex:1" onclick="switchCourseTab('manual')">✏️ Enter manually</button>
+    </div>
+
+    <!-- Scan tab -->
+    <div id="course-tab-scan">
+      <p style="font-size:12px;color:#888;margin-bottom:10px">Take a photo of your scorecard — tees, slope, rating, and hole handicaps load automatically.</p>
+      <label id="upload-label" style="display:flex;align-items:center;justify-content:center;gap:8px;border:2px dashed #ccc;border-radius:10px;padding:18px;cursor:pointer;font-size:14px;color:#555;touch-action:manipulation">
+        <span style="font-size:22px">📸</span> Tap to take or upload photo
+        <input type="file" id="scorecard-upload" accept="image/*" capture="environment" style="display:none" onchange="handleScorecardUpload(event)">
+      </label>
+      <div id="upload-status" style="margin-top:8px;font-size:13px;display:none"></div>
+    </div>
+
+    <!-- Manual tab -->
+    <div id="course-tab-manual" style="display:none">
+      <p style="font-size:12px;color:#888;margin-bottom:12px">Enter the slope and rating from your scorecard or club website.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div>
+          <div style="font-size:11px;color:#888;margin-bottom:4px">Slope</div>
+          <input type="number" id="manual-slope" placeholder="113" style="width:100%">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#888;margin-bottom:4px">Rating</div>
+          <input type="number" id="manual-rating" placeholder="72.0" step="0.1" style="width:100%">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#888;margin-bottom:4px">Par</div>
+          <input type="number" id="manual-par" placeholder="72" value="72" style="width:100%">
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="applyManualTees()">Apply</button>
+      <div id="manual-status" style="margin-top:8px;font-size:13px;display:none"></div>
+    </div>
   </div>
 
   <div class="card" id="tee-card" style="display:none">
@@ -247,6 +276,43 @@ function updateBetPreview(){
 
 // ── Tees ──────────────────────────────────────────────────────────────────
 // ── Scorecard photo upload ────────────────────────────────────────────────
+function switchCourseTab(tab){
+  const scan = document.getElementById('course-tab-scan');
+  const manual = document.getElementById('course-tab-manual');
+  const btnScan = document.getElementById('tab-scan');
+  const btnManual = document.getElementById('tab-manual');
+  if(tab==='scan'){
+    scan.style.display='block'; manual.style.display='none';
+    btnScan.className='btn btn-primary btn-sm'; btnScan.style.flex='1';
+    btnManual.className='btn btn-sm'; btnManual.style.flex='1';
+  } else {
+    scan.style.display='none'; manual.style.display='block';
+    btnManual.className='btn btn-primary btn-sm'; btnManual.style.flex='1';
+    btnScan.className='btn btn-sm'; btnScan.style.flex='1';
+    if(!document.querySelectorAll('.manual-tee-row').length) addManualTee();
+  }
+}
+
+function applyManualTees(){
+  const slope  = parseFloat(document.getElementById('manual-slope').value);
+  const rating = parseFloat(document.getElementById('manual-rating').value);
+  const par    = parseFloat(document.getElementById('manual-par').value)||72;
+  const status = document.getElementById('manual-status');
+  status.style.display = 'block';
+  if(isNaN(slope)||isNaN(rating)){
+    status.innerHTML = '<span style="color:#cc2222">❌ Please enter both slope and rating.</span>';
+    return;
+  }
+  COURSE.tees = [{name:'Course', color:'#1a6fbb', slope, rating, par}];
+  COURSE.par = par;
+  S.teeIdx = 0;
+  initTees();
+  renderStrokeSummary();
+  const tc = document.getElementById('tee-card');
+  if(tc) tc.style.display = 'block';
+  status.innerHTML = '<span style="color:#2d7a00">✅ Slope '+slope+' · Rating '+rating+' applied</span>';
+}
+
 async function handleScorecardUpload(event){
   const file = event.target.files[0];
   if(!file) return;
@@ -445,7 +511,7 @@ function removeRow(btn){
 function startRound(){
   const tc=document.getElementById('tee-card');
   if(!tc||tc.style.display==='none'){
-    alert('Please search for your course first so tee ratings can be loaded.');return;
+    alert('Please scan your scorecard or enter tee details manually first.');return;
   }
   const tee=COURSE.tees[S.teeIdx];
   const players=[];
